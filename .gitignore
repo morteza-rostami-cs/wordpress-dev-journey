@@ -1,0 +1,23 @@
+# WordPress core files
+wp-admin/
+wp-includes/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs and caches
+*.log
+cache/
+*.tmp
+
+# Node / Composer
+node_modules/
+vendor/
+
+# WordPress config
+wp-config.php
+.env
+
+# Uploads (optional: you can version media if you want)
+wp-content/uploads/
