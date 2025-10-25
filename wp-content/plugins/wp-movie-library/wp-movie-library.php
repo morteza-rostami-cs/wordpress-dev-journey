@@ -210,6 +210,141 @@ add_filter(
 
 });
 
+# add meta box to Movie post_type
+# creates a section on the Movie editor page titled -> Movie Details
+add_action(
+  'add_meta_boxes', #run when WP builds meta boxes on the post edit screen.
+  function() {
+    add_meta_box(
+      id: 'movie_details_box', # metabox id -> is some kinda join table
+      title: 'Movie Details', # ui form title
+      callback: 'wpmovie_render_details_box', # function to output html form ui
+      screen: 'movie', # attach to movie custom post type
+      context: 'normal', # form placement
+      priority: 'default', # order priority
+    );
+  }
+);
+
+# render the meta box -> Html
+function wpmovie_render_details_box(
+  $post, # receives post data
+) {
+
+  // verification on save
+  wp_nonce_field(
+    action: 'wpmovie_save_details',
+    name: 'wpmovie_details_nonce',
+  );
+
+  $rating = get_post_meta(
+    post_id: $post->ID, 
+    key: '_movie_rating',
+    single: true,
+  );
+
+  $year = get_post_meta(
+    post_id: $post->ID, # movie.id
+    key: '_movie_year', # metadata key in db
+    single: true,
+  );
+
+  // inject the data into form for update and so on.
+  ?>
+  <label>🎯 Rating:</label>
+  <input 
+  type="number" 
+  name="movie_rating" 
+  value="<?php echo esc_attr($rating); ?>" 
+  min="0" 
+  max="10" 
+  step="0.1" />
+  <br><br>
+  <label>📅 Release Year:</label>
+  <input 
+  type="number" 
+  name="movie_year" 
+  value="<?php echo esc_attr($year); ?>" 
+  min="1900" 
+  max="<?php echo date('Y'); ?>" />
+  <?php
+}
+
+# store the meta box inputs on Movie save
+
+add_action(
+  'save_post_movie', # Runs when a movie is saved.
+  function ($post_id) {
+
+    // if: there is a movie_rating -> inside form POST request
+    if (isset($_POST['movie_rating'])) {
+      // store metadata on post save submit
+      update_post_meta(
+        post_id: $post_id,
+        meta_key: '_movie_rating',
+        meta_value: floatval($_POST['movie_rating']), # cast to float
+      );
+    }
+
+    // if post has -> movie_year
+    if (isset($_POST['movie_year'])) {
+      update_post_meta(
+        post_id: $post_id,
+        meta_key: '_movie_year',
+        meta_value: intval($_POST['movie_year']),
+      );
+    }
+  } 
+);
+
+# add custom cols to the movie admin table
+add_filter(
+  hook_name: 'manage_movie_posts_columns',
+  callback: function ($columns) {
+    $columns['movie_rating'] = 'Rating';
+    $columns['movie_year'] = 'Year';
+
+    return $columns;
+  }
+);
+
+# add cols values
+add_action(
+  hook_name: "manage_movie_posts_custom_column",
+  callback: function($column, $post_id) {
+    if ($column === 'movie_rating') {
+      echo esc_html(
+        get_post_meta(
+          post_id: $post_id, 
+          key: '_movie_rating', 
+          single: true)
+      ) ?: '-';
+    }
+
+    if ($column === 'movie_year') {
+      echo esc_html(
+        get_post_meta(
+          post_id: $post_id, 
+          key: '_movie_year', 
+          single: true)
+      ) ?: '-';
+    }
+  },
+  priority: 10,
+  accepted_args: 2,
+);
+
+# make rating & year columns sortable
+add_filter(
+  hook_name: 'manage_edit-movie_sortable_columns',
+  callback: function($columns) {
+    $columns['movie_rating'] = 'movie_rating';
+    $columns['movie_year'] = 'movie_year';
+
+    return $columns;
+  }
+);
+
 /*
 
 # taxonomy is essentially -> a tagging or categories system.
