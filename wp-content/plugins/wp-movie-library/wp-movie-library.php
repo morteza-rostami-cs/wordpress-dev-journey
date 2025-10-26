@@ -273,8 +273,8 @@ function wpmovie_render_details_box(
 # store the meta box inputs on Movie save
 
 add_action(
-  'save_post_movie', # Runs when a movie is saved.
-  function ($post_id) {
+  hook_name: 'save_post_movie', # Runs when a movie is saved.
+  callback: function (int $post_id, WP_POST $post, bool $update) {
 
     // if: there is a movie_rating -> inside form POST request
     if (isset($_POST['movie_rating'])) {
@@ -294,7 +294,22 @@ add_action(
         meta_value: intval($_POST['movie_year']),
       );
     }
-  } 
+
+    # save default genre from plugin settings on first create
+    if (!$update) {
+      $default_genre = get_option(option: "wpmovie_default_genre");
+
+      if ($default_genre) {
+        // when creating movie, set default genre
+        wp_set_object_terms(
+          object_id: $post_id,
+          terms: $default_genre,
+          taxonomy: 'genre',
+        );
+      }
+    }
+  },
+  accepted_args: 3, 
 );
 
 # add custom cols to the movie admin table
@@ -345,7 +360,93 @@ add_filter(
   }
 );
 
+# add Movie settings menu page
+
+function wpmovie_register_settings_page() {
+  // add option settings
+  add_options_page(
+    page_title: 'Movie Settings',
+    menu_title: 'Movie Settings',
+    capability: 'manage_options',
+    menu_slug: 'wpmovie-settings',
+    callback: 'wpmovie_render_settings_page',
+  );
+}
+
+# runs for admin menu and register -> movie_menu settings
+add_action(
+  hook_name: 'admin_menu',
+  callback: 'wpmovie_register_settings_page',
+);
+
+# render settings page (Movie)
+function wpmovie_render_settings_page() {
+  echo '<div class="wrap">';
+  echo '<h1>Movie Settings</h1>';
+  echo '<p>welcome to the movie settings page! 🎬</p>';
+
+  echo '<form method="post" action="options.php">';
+
+  settings_fields('wpmovie_settings_group');
+  do_settings_sections('wpmovie-settings');
+  submit_button();
+
+  echo '</form>';
+  echo '</div>';
+}
+
+# using options api -> for plugin settings
+
+function wpmovie_register_settings() {
+  register_setting(
+    option_group: "wpmovie_settings_group",
+    option_name: 'wpmovie_default_genre',
+  );
+
+  // add a settings section
+  add_settings_section(
+    id: "wpmovie_general_section",
+    title: "General Settings",
+    callback: null,
+    page: "wpmovie-settings", # section's page
+  );
+
+  // register a form field
+  // stored in -> wp_options table
+  add_settings_field(
+    id: "wpmovie_default_genre",
+    title: "Default Genre",
+    callback: "wpmovie_default_genre_field", # render form field
+    page: "wpmovie-settings",
+    section: "wpmovie_general_section",
+  );
+}
+
+add_action(
+  hook_name: 'admin_init',
+  callback: 'wpmovie_register_settings',
+);
+
+# render input field for option
+function wpmovie_default_genre_field() {
+  # get default value
+  $value = get_option(
+    option: 'wpmovie_default_genre', # field id
+    default_value: '',
+  );
+
+  echo '<input 
+  type="text"
+  name="wpmovie_default_genre"
+  value="' . esc_attr($value) . '"
+  />';
+}
+
 /*
+
+# creating admin menus:
+  - add an item under settings tab -> add_options_page()
+  - create a top-level menu -> add_menu_page()
 
 # taxonomy is essentially -> a tagging or categories system.
 
